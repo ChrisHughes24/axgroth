@@ -1,0 +1,25 @@
+name = "axgroth"
+version = "0.1.0"
+defaultTargets = ["axgroth"]
+
+[[lean_lib]]
+name = "Axgroth"
+
+[[lean_exe]]
+name = "axgroth"
+root = "Main"
+
+[leanOptions]
+pp.unicode.fun = true
+autoImplicit = false
+relaxedAutoImplicit = false
+
+[[require]]
+name = "mathlib"
+git = "https://github.com/ChrisHughes24/mathlib4.git"
+rev = "47d6fc788eab9f6bb0b849455b2c23ea71b548aa"
+
+[[require]]
+scope = "leanprover"
+name = "doc-gen4"
+rev = "e2e51a0e33b348f7cd11a3cdd5fa5d695f17f596"
