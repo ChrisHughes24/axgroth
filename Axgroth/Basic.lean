@@ -429,7 +429,7 @@ lemma exists_MvRatFunc_inverse' [Finite ι] [Algebra K ℂ] (p : ι → MvPolyno
   rw [hr]
   rw [evalFractionRing_X]
 
-lemma exists_MvRatFunc_inverse [Finite ι] [Algebra K ℂ] (p : ι → MvPolynomial ι K)
+lemma exists_MvRatFunc_inverse'' [Finite ι] [Algebra K ℂ] (p : ι → MvPolynomial ι K)
     (hInj : Function.Injective (fun x i => (aeval x (p i) : ℂ))) :
     ∃ r s : ι → MvPolynomial ι K, (∀ i, IsRelPrime (r i) (s i)) ∧ (∀ i, s i ≠ 0) ∧
       ∀ (x : ι → ℂ), (∀ i, (s i).aeval x ≠ 0) →
@@ -448,3 +448,36 @@ lemma exists_MvRatFunc_inverse [Finite ι] [Algebra K ℂ] (p : ι → MvPolynom
     congr
     ext j
     rw [evalFractionRing_eq]
+
+lemma exists_MvRatFunc_inverse [Finite ι] [Algebra K ℂ] (p : ι → MvPolynomial ι K)
+    (hInj : Function.Injective (fun x i => (aeval x (p i) : ℂ))) :
+    ∃ f : (ι → ℂ) ≃ (ι → ℂ),
+    ∃ r s : ι → MvPolynomial ι K, (∀ i, IsRelPrime (r i) (s i)) ∧ (∀ i, s i ≠ 0) ∧
+      (∀ x i, f x i = (p i).aeval x) ∧
+      ∀ x : ι → ℂ, (∀ i, (s i).aeval x ≠ 0) →
+      ∀ i, f.symm x i = (r i).aeval x / (s i).aeval x := by
+  rcases exists_MvRatFunc_inverse'' p hInj with ⟨r, s, hrs, hs0, h⟩
+  have : CharZero K := RingHom.charZero (algebraMap K ℂ)
+  let f := Equiv.ofBijective _ (bijective_of_injective_on_isAlgClosed (K := ℂ) (L := ℂ)
+    (fun i => (p i).map (algebraMap K ℂ))
+    (by
+      intro a b
+      have := @hInj a b
+      simpa [aeval_def] using this))
+  use f, r, s, hrs, hs0
+  refine ⟨?_, ?_⟩
+  · intro x i
+    simp [f, aeval_def]
+  · intro x hx
+    rw [← funext_iff]
+    apply f.injective
+    simp only [Equiv.apply_symm_apply]
+    ext i
+    simpa [eq_comm, f, aeval_def] using h x hx i
+
+lemma exists_mvPolynomial_inverse_aux [Finite ι] [Algebra K ℂ] (p : ι → MvPolynomial ι K)
+    (hInj : Function.Injective (fun x i => (aeval x (p i) : ℂ))) :
+    ∃ f : (ι → ℂ) ≃ (ι → ℂ),
+    ∃ q : ι → MvPolynomial ι K,
+      (∀ x i, f x i = (p i).aeval x) ∧
+      ∀ x i, f.symm x i = (q i).aeval x := by sorry
