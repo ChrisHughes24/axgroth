@@ -147,6 +147,8 @@ lemma bijective_of_injective_on_isAlgClosed [Finite ι] [IsAlgClosed L] [Algebra
 
 section FractionRing
 
+section complex
+
 variable [Algebra K ℂ]
 
 def NonZeroDenom (r : FractionRing (MvPolynomial ι K)) (x : ι → ℂ) : Prop :=
@@ -269,10 +271,136 @@ lemma evalFractionRing_aeval (p : MvPolynomial ι K)
     refine evalFractionRing_mul ?_ (hr p)
     exact nonZeroDenom_aeval i r x hr
 
+end complex
+
+section num_den
+
+attribute [local instance] UniqueFactorizationMonoid.toGCDMonoid
+
+lemma exists_relprime_pair (p : FractionRing (MvPolynomial ι K)) : ∃ r s : MvPolynomial ι K,
+    s ≠ 0 ∧ IsRelPrime r s ∧ p * algebraMap (MvPolynomial ι K) (FractionRing (MvPolynomial ι K)) s =
+    algebraMap (MvPolynomial ι K) (FractionRing (MvPolynomial ι K)) r := by
+  rcases IsLocalization.surj  (nonZeroDivisors (MvPolynomial ι K)) p with ⟨⟨u, v, hv⟩, huv⟩
+  simp only at huv
+  rcases gcd_dvd_left u v with ⟨r, hr⟩
+  rcases gcd_dvd_right u v with ⟨s, hs⟩
+  use r, s
+  have gcd0 : gcd u v ≠ 0 := by
+    simp
+    rintro rfl rfl
+    simp at hv
+  refine ⟨?_, ?_, ?_⟩
+  · rintro rfl
+    simp at hs
+    subst v
+    simp at hv
+  · intro x hxr hxs
+    rcases hxr with ⟨r, rfl⟩
+    rcases hxs with ⟨s, rfl⟩
+    rw [← mul_assoc] at hr hs
+    have : gcd u v * x ∣ gcd u v := by
+      apply dvd_gcd
+      · conv_rhs => rw [hr]
+        exact dvd_mul_right (gcd u v * x) r
+      · conv_rhs => rw [hs]
+        exact dvd_mul_right (gcd u v * x) s
+    rcases this with ⟨y, hy⟩
+    simp [mul_assoc] at hy
+    rw [eq_comm, mul_right_eq_self₀] at hy
+    simp at hy
+    rcases hy with hy | ⟨rfl, rfl⟩
+    · exact isUnit_of_mul_eq_one x y hy
+    · simp at hv
+  · have : algebraMap (MvPolynomial ι K) (FractionRing (MvPolynomial ι K)) (gcd u v) ≠ 0 := by
+      simp
+      rintro rfl rfl
+      simp at hv
+    rwa [← mul_left_inj' this, mul_assoc, ← map_mul, ← map_mul, mul_comm s, mul_comm r, ← hr, ← hs]
+
+noncomputable def num (p : FractionRing (MvPolynomial ι K)) : MvPolynomial ι K :=
+  Classical.choose (exists_relprime_pair p)
+
+noncomputable def den (p : FractionRing (MvPolynomial ι K)) : MvPolynomial ι K :=
+  Classical.choose (Classical.choose_spec (exists_relprime_pair p))
+
+lemma den_ne_zero (p : FractionRing (MvPolynomial ι K)) : den p ≠ 0 :=
+  (Classical.choose_spec (Classical.choose_spec (exists_relprime_pair p))).1
+
+lemma num_den_relprime (p : FractionRing (MvPolynomial ι K)) : IsRelPrime (num p) (den p) :=
+  (Classical.choose_spec (Classical.choose_spec (exists_relprime_pair p))).2.1
+
+lemma mul_den (p : FractionRing (MvPolynomial ι K)) :
+    p * algebraMap (MvPolynomial ι K) (FractionRing (MvPolynomial ι K)) (den p) =
+    algebraMap (MvPolynomial ι K) (FractionRing (MvPolynomial ι K)) (num p) :=
+  (Classical.choose_spec (Classical.choose_spec (exists_relprime_pair p))).2.2
+
+lemma eq_of_mul_eq_thing {p : FractionRing (MvPolynomial ι K)} {r s : MvPolynomial ι K} (hs0 : s ≠ 0)
+    (h : p * algebraMap (MvPolynomial ι K) (FractionRing (MvPolynomial ι K)) s =
+      algebraMap (MvPolynomial ι K) (FractionRing (MvPolynomial ι K)) r) :
+    r * den p = num p * s := by
+  have := num_den_relprime p
+  have := mul_den p
+  have s0 : algebraMap (MvPolynomial ι K) (FractionRing (MvPolynomial ι K)) s ≠ 0 := by
+    simpa
+  rw [← mul_left_inj' s0, mul_right_comm, h] at this
+  simp only [← map_mul] at this
+  simp only [IsFractionRing.coe_inj] at this
+  exact this
+
+lemma den_dvd {p : FractionRing (MvPolynomial ι K)} {r s : MvPolynomial ι K} (hs0 : s ≠ 0)
+    (h : p * algebraMap (MvPolynomial ι K) (FractionRing (MvPolynomial ι K)) s =
+      algebraMap (MvPolynomial ι K) (FractionRing (MvPolynomial ι K)) r) :
+    den p ∣ s := by
+  have := eq_of_mul_eq_thing hs0 h
+  apply IsRelPrime.dvd_of_dvd_mul_left (num_den_relprime p).symm
+  rw [← this]
+  simp
+
+lemma num_dvd {p : FractionRing (MvPolynomial ι K)} {r s : MvPolynomial ι K} (hs0 : s ≠ 0)
+    (h : p * algebraMap (MvPolynomial ι K) (FractionRing (MvPolynomial ι K)) s =
+      algebraMap (MvPolynomial ι K) (FractionRing (MvPolynomial ι K)) r) :
+    num p ∣ r := by
+  have := eq_of_mul_eq_thing hs0 h
+  apply IsRelPrime.dvd_of_dvd_mul_right (num_den_relprime p)
+  rw [this]
+  simp
+
+
+end num_den
+
+section complex
+
+variable [Algebra K ℂ]
+
+lemma nonZeroDenom_iff {p : FractionRing (MvPolynomial ι K)} {x : ι → ℂ} :
+    NonZeroDenom p x ↔ (den p).aeval x ≠ 0 := by
+  refine ⟨?_, ?_⟩
+  · rintro ⟨⟨r, s⟩, hq₁, hq₂⟩ h
+    have : s ≠ 0 := by rintro rfl; simp at hq₂
+    have := den_dvd this hq₁
+    rcases this with ⟨u, rfl⟩
+    simp [h] at hq₂
+  · intro h
+    use (num p, den p)
+    simp [h]
+    exact mul_den p
+
+lemma evalFractionRing_eq {p : FractionRing (MvPolynomial ι K)} {x : ι → ℂ} :
+    evalFractionRing p x = (num p).aeval x / (den p).aeval x := by
+  by_cases h : NonZeroDenom p x
+  · apply evalFractionRing_eq_of_eq
+    · exact mul_den p
+    · rwa [← nonZeroDenom_iff]
+  · rw [evalFractionRing, dif_neg h]
+    rw [nonZeroDenom_iff] at h
+    simp only [ne_eq, Decidable.not_not] at h
+    simp [h]
+
+end complex
+
 end FractionRing
 
-lemma exists_MvRatFunc_inverse [Finite ι] [Algebra K ℂ]
-    (p : ι → MvPolynomial ι K)
+lemma exists_MvRatFunc_inverse' [Finite ι] [Algebra K ℂ] (p : ι → MvPolynomial ι K)
     (hInj : Function.Injective (fun x i => (aeval x (p i) : ℂ))) :
     ∃ r : ι → FractionRing (MvPolynomial ι K),
       ∀ (x : ι → ℂ), (∀ i, NonZeroDenom (r i) x) →
@@ -300,3 +428,23 @@ lemma exists_MvRatFunc_inverse [Finite ι] [Algebra K ℂ]
   simp only [funext_iff] at hr
   rw [hr]
   rw [evalFractionRing_X]
+
+lemma exists_MvRatFunc_inverse [Finite ι] [Algebra K ℂ] (p : ι → MvPolynomial ι K)
+    (hInj : Function.Injective (fun x i => (aeval x (p i) : ℂ))) :
+    ∃ r s : ι → MvPolynomial ι K, (∀ i, IsRelPrime (r i) (s i)) ∧ (∀ i, s i ≠ 0) ∧
+      ∀ (x : ι → ℂ), (∀ i, (s i).aeval x ≠ 0) →
+      ∀ i, (p i).aeval (fun i => (r i).aeval x / (s i).aeval x) = x i := by
+  rcases exists_MvRatFunc_inverse' p hInj with ⟨r, hr⟩
+  use fun i => num (r i), fun i => den (r i)
+  refine ⟨?_, ?_, ?_⟩
+  · intro i
+    exact num_den_relprime (r i)
+  · intro i
+    exact den_ne_zero (r i)
+  · simp only
+    intro x hx i
+    have := hr x (fun _ => by rw [nonZeroDenom_iff]; exact hx _) i
+    rw [← this]
+    congr
+    ext j
+    rw [evalFractionRing_eq]
