@@ -8,15 +8,15 @@ lemma tendsto_inv_cobounded {𝕜 : Type*} [NormedDivisionRing 𝕜] :
 
 lemma thing {ι : Type*} [Fintype ι] [Nonempty ι] (f : (ι → ℂ) ≃ (ι → ℂ)) (hf : Continuous f)
     {s : Set (ι → ℂ)} (hs : Dense (f ⁻¹' s)) {x : ι → ℂ}
-    (hg : Filter.Tendsto f.symm (𝓝[s] x) (Filter.cocompact _)) : False := by
+    (hg : Filter.Tendsto f.symm (𝓝[s] x) (Bornology.cobounded _)) : False := by
   have : Filter.Tendsto f (𝓝[f ⁻¹' s] (f.symm x)) (𝓝[s] f (f.symm x)) :=
     tendsto_nhdsWithin_iff.2 ⟨hf.continuousAt.mono_left nhdsWithin_le_nhds,
         eventually_nhdsWithin_of_forall <| by simp⟩
   simp only [Equiv.apply_symm_apply] at this
-  have : Filter.Tendsto (fun x => x) (𝓝[f ⁻¹' s] f.symm x) (Filter.cocompact _) := by
+  have : Filter.Tendsto (fun x => x) (𝓝[f ⁻¹' s] f.symm x) (Bornology.cobounded _) := by
     simpa using hg.comp this
-  simp only [Filter.Tendsto, Filter.map_id', Filter.le_def, Filter.mem_cocompact, mem_nhdsWithin,
-    forall_exists_index, and_imp] at this
+  simp only [Filter.Tendsto, Filter.map_id', Metric.cobounded_eq_cocompact, Filter.le_def,
+    Filter.mem_cocompact, mem_nhdsWithin, forall_exists_index, and_imp] at this
   rcases this (Metric.closedBall (f.symm x) 1)ᶜ (Metric.closedBall (f.symm x) 1)
     (by exact isCompact_closedBall (f.symm x) 1) (fun _ a => a) with ⟨U, hU⟩
   rcases Metric.isOpen_iff.1 hU.1 (f.symm x) hU.2.1 with ⟨ε, ε0, hε⟩
@@ -480,4 +480,212 @@ lemma exists_mvPolynomial_inverse_aux [Finite ι] [Algebra K ℂ] (p : ι → Mv
     ∃ f : (ι → ℂ) ≃ (ι → ℂ),
     ∃ q : ι → MvPolynomial ι K,
       (∀ x i, f x i = (p i).aeval x) ∧
-      ∀ x i, f.symm x i = (q i).aeval x := by sorry
+      ∀ x i, f.symm x i = (q i).aeval x := by
+  rcases exists_MvRatFunc_inverse p hInj with ⟨f, r, s, hrs, hs0, f_eq, f_symm_eq⟩
+  let := Fintype.ofFinite ι
+  replace f_eq : ↑f = (fun x i => aeval x (p i)) := by simp [funext_iff, f_eq]
+  sorry
+  -- have : ∀ i, IsUnit (s i) := by
+  --   intro i
+  --   by_contra hu
+  --   have : ∃ x : ι → ℂ, (s i).aeval x = 0 ∧ (r i).aeval x ≠ 0 := sorry
+  --   rcases this with ⟨x, hxs, hxr⟩
+  --   have : Nonempty ι := ⟨i⟩
+  --   apply @thing ι _ _ f (by
+  --     rw [f_eq]
+  --     continuity)
+  --     { x | ∀ i, (s i).aeval x ≠ 0 }
+  --     sorry x
+  --   rw [Filter.tendsto_congr' (f₂ := fun x i => aeval x (r i) / aeval x (s i))]
+  --   · simp only [div_eq_mul_inv]
+  --     let u : (ι → ℂ) → ((ι → ℂ) × (ι → ℂ)) := fun x => (fun i => aeval x (r i), fun i => (aeval x (s i))⁻¹)
+  --     let v : ((ι → ℂ) × (ι → ℂ)) → (ι → ℂ) := fun x => x.1 * x.2
+  --     show Filter.Tendsto (v ∘ u) _ _
+  --     have : Filter.Tendsto u (𝓝[{x | ∀ i, (aeval x) (s i) ≠ 0}] x)
+  --         ((𝓝[(fun x i => aeval x (r i)) '' {x | ∀ i, (aeval x) (s i) ≠ 0}] (u x).1) ×ˢ (Bornology.cobounded _)) := by
+  --       simp only [u]
+  --       rw [Filter.tendsto_prod_iff']
+  --       refine ⟨?_, ?_⟩
+  --       · simp only
+  --         refine ContinuousWithinAt.tendsto_nhdsWithin (α := ι → ℂ) (β := ι → ℂ) ?_ ?_
+  --         · apply Continuous.continuousWithinAt
+  --           continuity
+  --         · simp [Set.MapsTo]
+  --           intro x hx
+  --           use x
+  --       · simp only
+  --         have : Filter.Tendsto (fun (x : ι → ℂ) (i : ι) => (x i)⁻¹) (𝓝[{x | ∀ i : ι, x i ≠ 0}] 0) (Bornology.cobounded _) := by
+  --           have : (Bornology.cobounded (ι → ℂ)) = Filter.pi (fun _ => Bornology.cobounded ℂ) := by
+  --             ext
+  --             simp [Metric.cobounded_eq_cocompact, Filter.mem_pi', Filter.mem_cocompact]
+  --             sorry
+  --           rw [this, Filter.tendsto_pi]
+  --           intro i
+  --           refine Filter.Tendsto.comp (tendsto_inv_cobounded) ?_
+  --           refine ContinuousWithinAt.tendsto_nhdsWithin ?_ ?_
+  --           · apply Continuous.continuousWithinAt
+  --             exact continuous_apply i
+  --           · simp [Set.MapsTo]
+  --             intro x hx
+  --             apply hx
+  --         refine Filter.Tendsto.comp this ?_
+  --         convert ContinuousWithinAt.tendsto_nhdsWithin ?_ ?_
+  --         · rw [hxs]
+
+
+
+
+
+
+
+
+set_option synthInstance.maxHeartbeats 90000
+noncomputable def toComplex [CharZero K] (hK : Cardinal.mk K ≤ Cardinal.continuum) : K →+* ℂ :=
+  let f1 : K →+* AlgebraicClosure K := algebraMap _ _
+  let f2 : AlgebraicClosure K →+* MvPolynomial ℂ (AlgebraicClosure K) := MvPolynomial.C
+  let f3 : MvPolynomial ℂ (AlgebraicClosure K) →+*
+      AlgebraicClosure (FractionRing (MvPolynomial ℂ (AlgebraicClosure K))) := algebraMap _ _
+  have h1 : Cardinal.mk ( AlgebraicClosure (FractionRing (MvPolynomial ℂ (AlgebraicClosure K)))) ≤ Cardinal.lift (Cardinal.mk ℂ) := by
+    refine le_trans (Algebra.IsAlgebraic.cardinalMk_le_max (FractionRing (MvPolynomial ℂ (AlgebraicClosure K))) _) ?_
+    simp only [Cardinal.mk_fractionRing, cardinalMk_eq_max_lift, Cardinal.lift_uzero,
+      Cardinal.mk_complex, Cardinal.lift_continuum, le_sup_iff, Cardinal.aleph0_le_mk, true_or,
+      sup_of_le_left, sup_le_iff, le_refl, and_true]
+    refine le_trans (Algebra.IsAlgebraic.cardinalMk_le_max K _) ?_
+    simp only [Cardinal.aleph0_le_mk, sup_of_le_left, hK]
+  have h2 : Cardinal.lift (Cardinal.mk ℂ) ≤ Cardinal.mk ( AlgebraicClosure (FractionRing (MvPolynomial ℂ (AlgebraicClosure K)))) := by
+    conv_rhs => rw [← Cardinal.lift_id (Cardinal.mk ( AlgebraicClosure (FractionRing (MvPolynomial ℂ (AlgebraicClosure K)))))]
+    apply Cardinal.lift_mk_le.2
+    refine ⟨⟨?_, ?_⟩⟩
+    · intro x
+      apply (algebraMap (FractionRing (MvPolynomial ℂ (AlgebraicClosure K))) _).toFun
+      apply ((algebraMap (MvPolynomial ℂ (AlgebraicClosure K))) _).toFun
+      exact MvPolynomial.X x
+    · intro _ _
+      simp
+  let f4 : AlgebraicClosure (FractionRing (MvPolynomial ℂ (AlgebraicClosure K))) ≃+* ℂ := by
+    apply Classical.choice
+    apply IsAlgClosed.ringEquiv_of_equiv_of_charZero (hK := ?_) (hKL := ?_)
+    · rw [le_antisymm h1 h2]
+      simp; exact Cardinal.aleph0_lt_continuum
+    · rw [← Cardinal.lift_mk_eq', le_antisymm h1 h2]
+      simp
+  f4.toRingHom.comp <| f3.comp <| f2.comp <| f1
+
+lemma exists_mvPolynomial_inverse [Finite ι] [CharZero K] [Algebra K L] [IsAlgClosed L]
+    (p : ι → MvPolynomial ι K)
+    (hInj : Function.Injective (fun x i => (aeval x (p i) : L))) :
+    ∃ q : ι → MvPolynomial ι K, (∀ i, (p i).bind₁ q = .X i) ∧ (∀ i, (q i).bind₁ p = .X i) := by
+  let := Classical.decEq K
+  let := Fintype.ofFinite ι
+  let S : Finset K :=
+    (Finset.biUnion (Finset.univ : Finset ι) fun i => (p i).support.image fun x => coeff x (p i))
+  let M : Subfield K := Subfield.closure S
+  have cardinalM : Cardinal.mk M ≤ Cardinal.continuum := by
+    simp only [M]
+    refine le_trans (Subfield.cardinalMk_closure_le_max _) ?_
+    simp [le_of_lt (Cardinal.aleph0_lt_continuum)]
+    refine le_trans ?_ Cardinal.aleph0_le_continuum
+    apply le_of_lt
+    exact Cardinal.nat_lt_aleph0 S.card
+  let : Algebra M ℂ := (toComplex cardinalM).toAlgebra
+  have : ∀ i, ∃ q : MvPolynomial ι M, q.map (Subfield.subtype M) = p i := by
+    intro i
+    refine ⟨?_, ?_⟩
+    · refine Finsupp.mk ?_ ?_ ?_
+      · exact (p i).support
+      · intro m
+        refine ⟨(p i).coeff m, ?_⟩
+        simp only [M]
+        by_cases h : coeff m (p i) = 0
+        · simp [h]
+        apply Subfield.subset_closure
+        simp [S]
+        use i, m
+      · simp [Subtype.ext_iff]
+    ext
+    simp [MvPolynomial.coeff_map]
+    simp [MvPolynomial.coeff]
+  rw [Classical.skolem] at this
+  rcases this with ⟨q, hq⟩
+  letI : Algebra M L := Algebra.compHom L (Subfield.subtype M)
+  have alg_eq : algebraMap M L = (algebraMap K L).comp (Subfield.subtype M) := rfl
+  have hInj' : Function.Injective (fun x i => ((q i).aeval x : ℂ)) := by
+    rw [injective_iff_mem_radical, ← injective_iff_mem_radical (L := L)]
+    intro x y
+    simp only [aeval_def, alg_eq, ← eval_map, ← map_map, hq]
+    simp only [← aeval_def, eval_map]
+    intro h
+    exact hInj h
+  rcases exists_mvPolynomial_inverse_aux q hInj' with ⟨f, r, hr⟩
+  use (fun i => (r i).map (Subfield.subtype M))
+  have conc_aux : (∀ i, (q i).bind₁ r = .X i) ∧ (∀ i, (r i).bind₁ q = .X i) := by
+    refine ⟨?_, ?_⟩
+    · intro i
+      apply MvPolynomial.funext
+      intro x
+      rw [eval, eval₂Hom_bind₁]
+      simp only [coe_eval₂Hom, eval₂_id, eval₂Hom_X']
+      have := hr.2 (fun i => algebraMap _ _ (x i))
+      rw [← funext_iff] at this
+      apply_fun f at this
+      simp only [Equiv.apply_symm_apply, funext_iff] at this
+      replace this := this i
+      simp only [hr.1] at this
+      apply_fun algebraMap M ℂ
+      · rw [this, ← RingHom.comp_apply]
+        apply RingHom.congr_fun
+        ext
+        · simp
+        · simp only [RingHom.coe_comp, Function.comp_apply, eval_X, AlgHom.toRingHom_eq_coe,
+          RingHom.coe_coe, aeval_X]
+          rw [← RingHom.comp_apply]
+          apply RingHom.congr_fun
+          ext <;> simp
+      · exact RingHom.injective _
+    · intro i
+      apply MvPolynomial.funext
+      intro x
+      rw [eval, eval₂Hom_bind₁]
+      simp only [coe_eval₂Hom, eval₂_id, eval₂Hom_X']
+      have := hr.1 (fun i => algebraMap _ _ (x i))
+      rw [← funext_iff] at this
+      apply_fun f.symm at this
+      simp only [Equiv.symm_apply_apply, funext_iff] at this
+      replace this := this i
+      simp only [hr.2] at this
+      apply_fun algebraMap M ℂ
+      · rw [this, ← RingHom.comp_apply]
+        apply RingHom.congr_fun
+        ext
+        · simp
+        · simp only [RingHom.coe_comp, Function.comp_apply, eval_X, AlgHom.toRingHom_eq_coe,
+          RingHom.coe_coe, aeval_X]
+          rw [← RingHom.comp_apply]
+          apply RingHom.congr_fun
+          ext <;> simp
+      · exact RingHom.injective _
+  refine ⟨?_, ?_⟩
+  · intro i
+    rw [← hq]
+    apply MvPolynomial.funext
+    intro x
+    have := conc_aux.1 i
+    apply_fun aeval x at this
+    rw [aeval_def, ← coe_eval₂Hom, eval₂Hom_bind₁,
+      aeval_def, ← coe_eval₂Hom] at this
+    simp at this
+    rw [eval, eval₂Hom_bind₁]
+    simp
+    exact this
+  · intro i
+    rw [← funext hq]
+    apply MvPolynomial.funext
+    intro x
+    have := conc_aux.2 i
+    apply_fun aeval x at this
+    rw [aeval_def, ← coe_eval₂Hom, eval₂Hom_bind₁,
+      aeval_def, ← coe_eval₂Hom] at this
+    simp at this
+    rw [eval, eval₂Hom_bind₁]
+    simp
+    exact this
