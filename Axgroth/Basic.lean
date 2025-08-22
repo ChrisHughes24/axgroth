@@ -2,9 +2,49 @@ import Mathlib
 
 open Topology
 
+lemma continuous_symm {ι : Type*} [Finite ι] (f : (ι → ℂ) ≃ (ι → ℂ)) (hf : Continuous f) : Continuous f.symm := sorry
+
+lemma Dense.eq_of_eqOn {α β : Type*} [TopologicalSpace α] [TopologicalSpace β] [T2Space β]
+    {s : Set α} (hs : Dense s)
+    {f g : α → β} (hf : Continuous f) (hg : Continuous g)
+    (h : ∀ x ∈ s, f x = g x) : f = g := by
+  ext x
+  rw [← hs.extend_unique_at (f := fun x => f x) _ hg.continuousAt,
+    ← hs.extend_unique_at (f := fun x => f x) _ hf.continuousAt]
+  · simp
+  · filter_upwards
+    intro x
+    rw [h _ x.2]
+
 lemma tendsto_inv_cobounded {𝕜 : Type*} [NormedDivisionRing 𝕜] :
     Filter.Tendsto (.⁻¹) (𝓝[≠] (0 : 𝕜)) (Bornology.cobounded 𝕜) := by
-  simp [Filter.Tendsto]
+  simp only [Filter.Tendsto, Filter.map_inv, Filter.inv_nhdsWithin_ne_zero, le_refl]
+
+lemma thing2 {ι : Type*} [Fintype ι] (f : (ι → ℂ) ≃ (ι → ℂ)) (hf : Continuous f)
+    {s : Set (ι → ℂ)} (i : ι) (hs : Dense s) {x : ι → ℂ}
+    (hg : Filter.Tendsto (fun x => f.symm x i) (𝓝[s] x) (Bornology.cobounded _)) : False := by
+  have : Filter.Tendsto f (𝓝[f ⁻¹' s] (f.symm x)) (𝓝[s] f (f.symm x)) :=
+    tendsto_nhdsWithin_iff.2 ⟨hf.continuousAt.mono_left nhdsWithin_le_nhds,
+        eventually_nhdsWithin_of_forall <| by simp⟩
+  simp only [Equiv.apply_symm_apply] at this
+  have : Filter.Tendsto (fun x => x i) (𝓝[f ⁻¹' s] f.symm x) (Bornology.cobounded _) := by
+    simpa [Function.comp_def] using hg.comp this
+  simp only [Filter.Tendsto, Metric.cobounded_eq_cocompact, Filter.le_def, Filter.mem_cocompact,
+    Filter.mem_map, mem_nhdsWithin, forall_exists_index, and_imp] at this
+  rcases this (Metric.closedBall (f.symm x i) 1)ᶜ (Metric.closedBall (f.symm x i) 1)
+    (by exact isCompact_closedBall (f.symm x i) 1) (fun _ a => a) with ⟨U, hU⟩
+  rcases Metric.isOpen_iff.1 hU.1 (f.symm x) hU.2.1 with ⟨ε, ε0, hε⟩
+  have hs : Dense (f⁻¹' s) := Dense.preimage hs (by
+    refine (Equiv.continuous_symm_iff f).mp ?_
+    exact continuous_symm _ hf)
+  rcases hs.exists_mem_open Metric.isOpen_ball
+    ⟨f.symm x, show f.symm x ∈ Metric.ball (f.symm x) (min ε 1) by simp [ε0]⟩ with ⟨y, hy⟩
+  have h1 := @hU.2.2 y (Set.mem_inter (hε (Metric.ball_subset_ball (by simp) hy.2)) hy.1)
+  simp only [Metric.mem_ball, lt_inf_iff, zero_lt_one, dist_pi_lt_iff] at hy
+  have h2 := hy.2.2 i
+  simp only [Set.preimage_compl, Set.mem_compl_iff, Set.mem_preimage, Metric.mem_closedBall,
+    not_le] at h1 h2
+  linarith
 
 lemma thing {ι : Type*} [Fintype ι] [Nonempty ι] (f : (ι → ℂ) ≃ (ι → ℂ)) (hf : Continuous f)
     {s : Set (ι → ℂ)} (hs : Dense (f ⁻¹' s)) {x : ι → ℂ}
@@ -475,6 +515,22 @@ lemma exists_MvRatFunc_inverse [Finite ι] [Algebra K ℂ] (p : ι → MvPolynom
     ext i
     simpa [eq_comm, f, aeval_def] using h x hx i
 
+lemma exists_eq_zero_ne_zero [Finite ι] [Algebra K ℂ] (r s : MvPolynomial ι K)
+    (hrp : IsRelPrime r s) (hsu : ¬IsUnit s) : ∃ x : ι → ℂ, s.aeval x = 0 ∧ r.aeval x ≠ 0  := by
+  by_contra h
+  simp only [ne_eq, not_exists, not_and, not_not] at h
+  have : r ∈ (Ideal.span {s}).radical := by
+    rw [← vanishingIdeal_zeroLocus_eq_radical (K := ℂ), zeroLocus_span]
+    simpa [- vanishingIdeal_zeroLocus_eq_radical]
+  rw [Ideal.mem_radical_iff] at this
+  simp only [Ideal.mem_span_singleton] at this
+  rcases this with ⟨n, hn⟩
+  have := IsRelPrime.pow_left (m := n) hrp
+  simp [IsRelPrime] at this
+  have := this hn (dvd_refl _)
+  contradiction
+
+set_option maxHeartbeats 1000000
 lemma exists_mvPolynomial_inverse_aux [Finite ι] [Algebra K ℂ] (p : ι → MvPolynomial ι K)
     (hInj : Function.Injective (fun x i => (aeval x (p i) : ℂ))) :
     ∃ f : (ι → ℂ) ≃ (ι → ℂ),
@@ -483,61 +539,122 @@ lemma exists_mvPolynomial_inverse_aux [Finite ι] [Algebra K ℂ] (p : ι → Mv
       ∀ x i, f.symm x i = (q i).aeval x := by
   rcases exists_MvRatFunc_inverse p hInj with ⟨f, r, s, hrs, hs0, f_eq, f_symm_eq⟩
   let := Fintype.ofFinite ι
-  replace f_eq : ↑f = (fun x i => aeval x (p i)) := by simp [funext_iff, f_eq]
-  sorry
-  -- have : ∀ i, IsUnit (s i) := by
-  --   intro i
-  --   by_contra hu
-  --   have : ∃ x : ι → ℂ, (s i).aeval x = 0 ∧ (r i).aeval x ≠ 0 := sorry
-  --   rcases this with ⟨x, hxs, hxr⟩
-  --   have : Nonempty ι := ⟨i⟩
-  --   apply @thing ι _ _ f (by
-  --     rw [f_eq]
-  --     continuity)
-  --     { x | ∀ i, (s i).aeval x ≠ 0 }
-  --     sorry x
-  --   rw [Filter.tendsto_congr' (f₂ := fun x i => aeval x (r i) / aeval x (s i))]
-  --   · simp only [div_eq_mul_inv]
-  --     let u : (ι → ℂ) → ((ι → ℂ) × (ι → ℂ)) := fun x => (fun i => aeval x (r i), fun i => (aeval x (s i))⁻¹)
-  --     let v : ((ι → ℂ) × (ι → ℂ)) → (ι → ℂ) := fun x => x.1 * x.2
-  --     show Filter.Tendsto (v ∘ u) _ _
-  --     have : Filter.Tendsto u (𝓝[{x | ∀ i, (aeval x) (s i) ≠ 0}] x)
-  --         ((𝓝[(fun x i => aeval x (r i)) '' {x | ∀ i, (aeval x) (s i) ≠ 0}] (u x).1) ×ˢ (Bornology.cobounded _)) := by
-  --       simp only [u]
-  --       rw [Filter.tendsto_prod_iff']
-  --       refine ⟨?_, ?_⟩
-  --       · simp only
-  --         refine ContinuousWithinAt.tendsto_nhdsWithin (α := ι → ℂ) (β := ι → ℂ) ?_ ?_
-  --         · apply Continuous.continuousWithinAt
-  --           continuity
-  --         · simp [Set.MapsTo]
-  --           intro x hx
-  --           use x
-  --       · simp only
-  --         have : Filter.Tendsto (fun (x : ι → ℂ) (i : ι) => (x i)⁻¹) (𝓝[{x | ∀ i : ι, x i ≠ 0}] 0) (Bornology.cobounded _) := by
-  --           have : (Bornology.cobounded (ι → ℂ)) = Filter.pi (fun _ => Bornology.cobounded ℂ) := by
-  --             ext
-  --             simp [Metric.cobounded_eq_cocompact, Filter.mem_pi', Filter.mem_cocompact]
-  --             sorry
-  --           rw [this, Filter.tendsto_pi]
-  --           intro i
-  --           refine Filter.Tendsto.comp (tendsto_inv_cobounded) ?_
-  --           refine ContinuousWithinAt.tendsto_nhdsWithin ?_ ?_
-  --           · apply Continuous.continuousWithinAt
-  --             exact continuous_apply i
-  --           · simp [Set.MapsTo]
-  --             intro x hx
-  --             apply hx
-  --         refine Filter.Tendsto.comp this ?_
-  --         convert ContinuousWithinAt.tendsto_nhdsWithin ?_ ?_
-  --         · rw [hxs]
+  have f_eq' : ↑f = (fun x i => aeval x (p i)) := by simp [funext_iff, f_eq]
+  have hs : Dense { x : ι → ℂ | ∀ i, (s i).aeval x ≠ 0 } := by
+    simp only [ne_eq]
+    convert dense_zero (p := ∏ j, (s j).map (algebraMap K ℂ)) ?_
+    · simp only [Finset.prod_ne_zero_iff, map_prod, Finset.mem_univ, true_implies]
+      apply forall_congr'
+      intro j
+      rw [aeval_def, eval_map, ← coe_eval₂Hom]
+    · simp [Finset.prod_eq_zero_iff]
+      intro j
+      rw [map_eq_zero_iff]
+      exact hs0 _
+      apply MvPolynomial.map_injective
+      exact FaithfulSMul.algebraMap_injective K ℂ
+  have : ∀ i, IsUnit (s i) := by
+    intro i
+    by_contra hu
+    have : ∃ x : ι → ℂ, (s i).aeval x = 0 ∧ (r i).aeval x ≠ 0 :=
+      exists_eq_zero_ne_zero (r i) (s i) (hrs _) hu
+    rcases this with ⟨x, hxs, hxr⟩
+    have : Nonempty ι := ⟨i⟩
 
-
-
-
-
-
-
+    apply @thing2 ι _ f (by
+      rw [f_eq']
+      continuity)
+      { x | ∀ i, (s i).aeval x ≠ 0 } i hs x
+    rw [Filter.tendsto_congr' (f₂ := fun x => aeval x (r i) / aeval x (s i))]
+    · simp only [div_eq_mul_inv]
+      let u : (ι → ℂ) → (ℂ × ℂ) := fun x => (aeval x (r i), (aeval x (s i))⁻¹)
+      let v : (ℂ × ℂ) → ℂ := fun x => x.1 * x.2
+      show Filter.Tendsto (v ∘ u) _ _
+      have : Filter.Tendsto u (𝓝[{x | ∀ i, (s i).aeval x ≠ 0}] x)
+          ((𝓝[(aeval . (r i)) '' {x | ∀ i, (s i).aeval x ≠ 0}] (u x).1) ×ˢ (Bornology.cobounded _)) := by
+        simp only [u]
+        rw [Filter.tendsto_prod_iff']
+        refine ⟨?_, ?_⟩
+        · simp only
+          refine ContinuousWithinAt.tendsto_nhdsWithin ?_ ?_
+          · apply Continuous.continuousWithinAt
+            continuity
+          · simp [Set.MapsTo]
+            intro x hx
+            use x
+        · simp only
+          refine Filter.Tendsto.comp tendsto_inv_cobounded ?_
+          conv in (𝓝[≠] _) => rw [← hxs]
+          refine ContinuousWithinAt.tendsto_nhdsWithin ?_ ?_
+          · apply Continuous.continuousWithinAt
+            continuity
+          · simp +contextual [Set.MapsTo, hxs]
+      refine Filter.Tendsto.comp ?_ this
+      simp only [ne_eq, v]
+      refine Filter.Tendsto.mono_left ?_ (Filter.prod_mono (nhdsWithin_le_nhds) le_rfl)
+      rw [Metric.cobounded_eq_cocompact]
+      apply tendsto_cocompact_of_tendsto_dist_comp_atTop 0
+      simp only [dist_zero_right, Complex.norm_mul, ← Metric.cobounded_eq_cocompact,
+        ← Filter.inv_nhdsWithin_ne_zero]
+      rw [Filter.tendsto_atTop]
+      intro r
+      rw [Filter.Eventually]
+      simp only [Filter.inv_nhdsWithin_ne_zero, Filter.mem_prod_iff]
+      have u0 : (u x).1 ≠ 0 := hxr
+      use Metric.ball (u x).1 (‖(u x).1 / 2‖)
+      refine ⟨?_, ?_⟩
+      · rw [mem_nhds_iff]
+        refine ⟨_, Set.Subset.refl _, ?_⟩
+        simp [u0]
+      · simp only [Complex.norm_div, Complex.norm_ofNat, Set.subset_def, Set.mem_prod,
+          Metric.mem_ball, Set.mem_setOf_eq, and_imp, Prod.forall]
+        use (Metric.closedBall 0 (|r| / ‖(u x).1 / 2‖))ᶜ
+        refine ⟨?_, ?_⟩
+        · rw [Metric.cobounded_eq_cocompact]
+          simp [Filter.mem_cocompact]
+          exact isCompact_closedBall _ _
+        · intro a b ha
+          simp only [Complex.norm_div, Complex.norm_ofNat, Set.mem_compl_iff, Metric.mem_closedBall,
+            dist_zero_right, not_le]
+          intro h
+          refine le_trans (le_abs_self _) ?_
+          rw [div_lt_iff₀ (by simp [u0])] at h
+          refine le_trans (le_of_lt h) ?_
+          rw [mul_comm]
+          refine mul_le_mul ?_ ?_ ?_ ?_
+          · have := dist_triangle 0 a (u x).1
+            simp at this
+            have := lt_of_le_of_lt this (add_lt_add_of_le_of_lt le_rfl ha)
+            rw [← sub_lt_iff_lt_add] at this
+            ring_nf at  this
+            ring_nf
+            exact le_of_lt this
+          · exact le_rfl
+          · simp
+          · simp
+    · refine eventuallyEq_nhdsWithin_of_eqOn ?_
+      intro x hx
+      apply f_symm_eq _ hx
+  · use f
+    simp only [isUnit_iff_dvd_one, dvd_iff_exists_eq_mul_left, Classical.skolem] at this
+    rcases this with ⟨v, hv⟩
+    use fun i => r i * v i
+    refine ⟨?_, ?_⟩
+    · intro x hx
+      rw [f_eq]
+    · intro x
+      rw [← _root_.funext_iff]
+      revert x
+      rw [← _root_.funext_iff]
+      apply hs.eq_of_eqOn
+      apply continuous_symm
+      rw [f_eq']
+      continuity
+      simp only
+      continuity
+      simp [funext_iff]
+      intro x h1 i
+      rw [f_symm_eq x h1 i, div_eq_iff (h1 _), mul_assoc, ← map_mul, ← hv, map_one, mul_one]
 
 set_option synthInstance.maxHeartbeats 90000
 noncomputable def toComplex [CharZero K] (hK : Cardinal.mk K ≤ Cardinal.continuum) : K →+* ℂ :=
