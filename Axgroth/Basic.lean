@@ -2,11 +2,8 @@ import Mathlib
 
 open Topology
 
-lemma continuous_symm {ι : Type*} [Finite ι] (f : (ι → ℂ) ≃ (ι → ℂ)) (hf : Continuous f) : Continuous f.symm := sorry
-
 lemma Dense.eq_of_eqOn {α β : Type*} [TopologicalSpace α] [TopologicalSpace β] [T2Space β]
-    {s : Set α} (hs : Dense s)
-    {f g : α → β} (hf : Continuous f) (hg : Continuous g)
+    {s : Set α} (hs : Dense s) {f g : α → β} (hf : Continuous f) (hg : Continuous g)
     (h : ∀ x ∈ s, f x = g x) : f = g := by
   ext x
   rw [← hs.extend_unique_at (f := fun x => f x) _ hg.continuousAt,
@@ -20,8 +17,34 @@ lemma tendsto_inv_cobounded {𝕜 : Type*} [NormedDivisionRing 𝕜] :
     Filter.Tendsto (.⁻¹) (𝓝[≠] (0 : 𝕜)) (Bornology.cobounded 𝕜) := by
   simp only [Filter.Tendsto, Filter.map_inv, Filter.inv_nhdsWithin_ne_zero, le_refl]
 
-lemma thing2 {ι : Type*} [Fintype ι] (f : (ι → ℂ) ≃ (ι → ℂ)) (hf : Continuous f)
-    {s : Set (ι → ℂ)} (i : ι) (hs : Dense s) {x : ι → ℂ}
+-- lemma thing2 {ι : Type*} [Fintype ι] (f : (ι → ℂ) ≃ (ι → ℂ)) (hf : Continuous f)
+--     {s : Set (ι → ℂ)} (i : ι) (hs : Dense s) {x : ι → ℂ}
+--     (hg : Filter.Tendsto (fun x => f.symm x i) (𝓝[s] x) (Bornology.cobounded _)) : False := by
+--   have : Filter.Tendsto f (𝓝[f ⁻¹' s] (f.symm x)) (𝓝[s] f (f.symm x)) :=
+--     tendsto_nhdsWithin_iff.2 ⟨hf.continuousAt.mono_left nhdsWithin_le_nhds,
+--         eventually_nhdsWithin_of_forall <| by simp⟩
+--   simp only [Equiv.apply_symm_apply] at this
+--   have : Filter.Tendsto (fun x => x i) (𝓝[f ⁻¹' s] f.symm x) (Bornology.cobounded _) := by
+--     simpa [Function.comp_def] using hg.comp this
+--   simp only [Filter.Tendsto, Metric.cobounded_eq_cocompact, Filter.le_def, Filter.mem_cocompact,
+--     Filter.mem_map, mem_nhdsWithin, forall_exists_index, and_imp] at this
+--   rcases this (Metric.closedBall (f.symm x i) 1)ᶜ (Metric.closedBall (f.symm x i) 1)
+--     (by exact isCompact_closedBall (f.symm x i) 1) (fun _ a => a) with ⟨U, hU⟩
+--   rcases Metric.isOpen_iff.1 hU.1 (f.symm x) hU.2.1 with ⟨ε, ε0, hε⟩
+--   have hs : Dense (f⁻¹' s) := Dense.preimage hs (by
+--     refine (Equiv.continuous_symm_iff f).mp ?_
+--     exact continuous_symm _ hf)
+--   rcases hs.exists_mem_open Metric.isOpen_ball
+--     ⟨f.symm x, show f.symm x ∈ Metric.ball (f.symm x) (min ε 1) by simp [ε0]⟩ with ⟨y, hy⟩
+--   have h1 := @hU.2.2 y (Set.mem_inter (hε (Metric.ball_subset_ball (by simp) hy.2)) hy.1)
+--   simp only [Metric.mem_ball, lt_inf_iff, zero_lt_one, dist_pi_lt_iff] at hy
+--   have h2 := hy.2.2 i
+--   simp only [Set.preimage_compl, Set.mem_compl_iff, Set.mem_preimage, Metric.mem_closedBall,
+--     not_le] at h1 h2
+--   linarith
+
+lemma thing3 {ι : Type*} [Fintype ι] (f : (ι → ℂ) ≃ (ι → ℂ)) (hf : Continuous f)
+    {s : Set (ι → ℂ)} (i : ι) (hs : Dense (f ⁻¹' s)) {x : ι → ℂ}
     (hg : Filter.Tendsto (fun x => f.symm x i) (𝓝[s] x) (Bornology.cobounded _)) : False := by
   have : Filter.Tendsto f (𝓝[f ⁻¹' s] (f.symm x)) (𝓝[s] f (f.symm x)) :=
     tendsto_nhdsWithin_iff.2 ⟨hf.continuousAt.mono_left nhdsWithin_le_nhds,
@@ -34,9 +57,6 @@ lemma thing2 {ι : Type*} [Fintype ι] (f : (ι → ℂ) ≃ (ι → ℂ)) (hf :
   rcases this (Metric.closedBall (f.symm x i) 1)ᶜ (Metric.closedBall (f.symm x i) 1)
     (by exact isCompact_closedBall (f.symm x i) 1) (fun _ a => a) with ⟨U, hU⟩
   rcases Metric.isOpen_iff.1 hU.1 (f.symm x) hU.2.1 with ⟨ε, ε0, hε⟩
-  have hs : Dense (f⁻¹' s) := Dense.preimage hs (by
-    refine (Equiv.continuous_symm_iff f).mp ?_
-    exact continuous_symm _ hf)
   rcases hs.exists_mem_open Metric.isOpen_ball
     ⟨f.symm x, show f.symm x ∈ Metric.ball (f.symm x) (min ε 1) by simp [ε0]⟩ with ⟨y, hy⟩
   have h1 := @hU.2.2 y (Set.mem_inter (hε (Metric.ball_subset_ball (by simp) hy.2)) hy.1)
@@ -66,6 +86,27 @@ lemma thing {ι : Type*} [Fintype ι] [Nonempty ι] (f : (ι → ℂ) ≃ (ι �
   have h2 := hy.2
   simp only [Set.mem_compl_iff, Metric.mem_closedBall, not_le, Metric.mem_ball, lt_inf_iff] at h1 h2
   linarith
+
+-- lemma thing {ι : Type*} [Fintype ι] [Nonempty ι] (f : (ι → ℂ) ≃ (ι → ℂ)) (hf : Continuous f)
+--     {s : Set (ι → ℂ)} (hs : Dense (f ⁻¹' s)) {x : ι → ℂ}
+--     (hg : Filter.Tendsto f.symm (𝓝[s] x) (Bornology.cobounded _)) : False := by
+--   have : Filter.Tendsto f (𝓝[f ⁻¹' s] (f.symm x)) (𝓝[s] f (f.symm x)) :=
+--     tendsto_nhdsWithin_iff.2 ⟨hf.continuousAt.mono_left nhdsWithin_le_nhds,
+--         eventually_nhdsWithin_of_forall <| by simp⟩
+--   simp only [Equiv.apply_symm_apply] at this
+--   have : Filter.Tendsto (fun x => x) (𝓝[f ⁻¹' s] f.symm x) (Bornology.cobounded _) := by
+--     simpa using hg.comp this
+--   simp only [Filter.Tendsto, Filter.map_id', Metric.cobounded_eq_cocompact, Filter.le_def,
+--     Filter.mem_cocompact, mem_nhdsWithin, forall_exists_index, and_imp] at this
+--   rcases this (Metric.closedBall (f.symm x) 1)ᶜ (Metric.closedBall (f.symm x) 1)
+--     (by exact isCompact_closedBall (f.symm x) 1) (fun _ a => a) with ⟨U, hU⟩
+--   rcases Metric.isOpen_iff.1 hU.1 (f.symm x) hU.2.1 with ⟨ε, ε0, hε⟩
+--   rcases hs.exists_mem_open Metric.isOpen_ball
+--     ⟨f.symm x, show f.symm x ∈ Metric.ball (f.symm x) (min ε 1) by simp [ε0]⟩ with ⟨y, hy⟩
+--   have h1 := hU.2.2 (Set.mem_inter (hε (Metric.ball_subset_ball (by simp) hy.2)) hy.1)
+--   have h2 := hy.2
+--   simp only [Set.mem_compl_iff, Metric.mem_closedBall, not_le, Metric.mem_ball, lt_inf_iff] at h1 h2
+--   linarith
 
 lemma thing' (f : ℂ ≃ ℂ) (hf : Continuous f) (x : ℂ)
     (hg : Filter.Tendsto f.symm (𝓝[≠] x) (Filter.cocompact _)) : False := by
@@ -540,19 +581,41 @@ lemma exists_mvPolynomial_inverse_aux [Finite ι] [Algebra K ℂ] (p : ι → Mv
   rcases exists_MvRatFunc_inverse p hInj with ⟨f, r, s, hrs, hs0, f_eq, f_symm_eq⟩
   let := Fintype.ofFinite ι
   have f_eq' : ↑f = (fun x i => aeval x (p i)) := by simp [funext_iff, f_eq]
-  have hs : Dense { x : ι → ℂ | ∀ i, (s i).aeval x ≠ 0 } := by
-    simp only [ne_eq]
-    convert dense_zero (p := ∏ j, (s j).map (algebraMap K ℂ)) ?_
-    · simp only [Finset.prod_ne_zero_iff, map_prod, Finset.mem_univ, true_implies]
-      apply forall_congr'
-      intro j
-      rw [aeval_def, eval_map, ← coe_eval₂Hom]
-    · simp [Finset.prod_eq_zero_iff]
-      intro j
-      rw [map_eq_zero_iff]
-      exact hs0 _
-      apply MvPolynomial.map_injective
-      exact FaithfulSMul.algebraMap_injective K ℂ
+  let d : Set (ι → ℂ) := { x | ∀ i, (s i).aeval x ≠ 0 }
+  have d_eq : d = { x | (∏ j, (s j).map (algebraMap K ℂ)).eval x ≠ 0 } := by
+    ext x
+    simp only [Finset.prod_ne_zero_iff, map_prod, Finset.mem_univ, true_implies, Set.mem_setOf_eq]
+    apply forall_congr'
+    intro j
+    rw [aeval_def, eval_map, ← coe_eval₂Hom]
+  have preimage_d_eq : (f ⁻¹' d) = { x | (((∏ j, (s j)).bind₁ p).map (algebraMap K ℂ)).eval x ≠ 0 } := by
+    rw [f_eq', d_eq]
+    ext x
+    simp only [map_prod, eval_map, ne_eq, Set.preimage_setOf_eq, Set.mem_setOf_eq]
+    simp only [← coe_eval₂Hom, ← coe_eval₂Hom, eval₂Hom_bind₁]
+    simp [aeval_def]
+
+  have hs : Dense d := by
+    rw [d_eq]
+    apply dense_zero
+    simp [Finset.prod_eq_zero_iff]
+    intro j
+    rw [map_eq_zero_iff]
+    exact hs0 _
+    apply MvPolynomial.map_injective
+    exact FaithfulSMul.algebraMap_injective K ℂ
+  have thing_ne_zero : (((∏ j, (s j)).bind₁ p).map (algebraMap K ℂ)) ≠ 0 := by
+    intro h
+    rw [h] at preimage_d_eq
+    apply_fun (f '' .) at preimage_d_eq
+    simp at preimage_d_eq
+    rw [preimage_d_eq] at hs
+    simp [dense_iff_closure_eq] at hs
+    simp [Set.ext_iff] at hs
+  have preimage_d_dense : Dense (f ⁻¹' d) := by
+    rw [preimage_d_eq]
+    apply dense_zero
+    exact thing_ne_zero
   have : ∀ i, IsUnit (s i) := by
     intro i
     by_contra hu
@@ -560,11 +623,10 @@ lemma exists_mvPolynomial_inverse_aux [Finite ι] [Algebra K ℂ] (p : ι → Mv
       exists_eq_zero_ne_zero (r i) (s i) (hrs _) hu
     rcases this with ⟨x, hxs, hxr⟩
     have : Nonempty ι := ⟨i⟩
-
-    apply @thing2 ι _ f (by
+    apply @thing3 ι _ f (by
       rw [f_eq']
       continuity)
-      { x | ∀ i, (s i).aeval x ≠ 0 } i hs x
+      d i preimage_d_dense x
     rw [Filter.tendsto_congr' (f₂ := fun x => aeval x (r i) / aeval x (s i))]
     · simp only [div_eq_mul_inv]
       let u : (ι → ℂ) → (ℂ × ℂ) := fun x => (aeval x (r i), (aeval x (s i))⁻¹)
@@ -642,19 +704,17 @@ lemma exists_mvPolynomial_inverse_aux [Finite ι] [Algebra K ℂ] (p : ι → Mv
     refine ⟨?_, ?_⟩
     · intro x hx
       rw [f_eq]
-    · intro x
-      rw [← _root_.funext_iff]
-      revert x
-      rw [← _root_.funext_iff]
-      apply hs.eq_of_eqOn
-      apply continuous_symm
-      rw [f_eq']
-      continuity
+    · intro x i
+      have h1 : ∀ j, aeval x (s j) ≠ 0 := by
+        intro j h
+        have := hv j
+        apply_fun aeval x at this
+        rw [map_mul, h] at this
+        simp at this
+      rw [f_symm_eq x h1 i, div_eq_iff (h1 _)]
       simp only
-      continuity
-      simp [funext_iff]
-      intro x h1 i
-      rw [f_symm_eq x h1 i, div_eq_iff (h1 _), mul_assoc, ← map_mul, ← hv, map_one, mul_one]
+      rw [← map_mul, mul_assoc, ← hv]
+      simp
 
 set_option synthInstance.maxHeartbeats 90000
 noncomputable def toComplex [CharZero K] (hK : Cardinal.mk K ≤ Cardinal.continuum) : K →+* ℂ :=
@@ -670,7 +730,7 @@ noncomputable def toComplex [CharZero K] (hK : Cardinal.mk K ≤ Cardinal.contin
     refine le_trans (Algebra.IsAlgebraic.cardinalMk_le_max K _) ?_
     simp only [Cardinal.aleph0_le_mk, sup_of_le_left, hK]
   have h2 : Cardinal.lift (Cardinal.mk ℂ) ≤ Cardinal.mk ( AlgebraicClosure (FractionRing (MvPolynomial ℂ (AlgebraicClosure K)))) := by
-    conv_rhs => rw [← Cardinal.lift_id (Cardinal.mk ( AlgebraicClosure (FractionRing (MvPolynomial ℂ (AlgebraicClosure K)))))]
+    conv_rhs => rw [← Cardinal.lift_id (Cardinal.mk (AlgebraicClosure (FractionRing (MvPolynomial ℂ (AlgebraicClosure K)))))]
     apply Cardinal.lift_mk_le.2
     refine ⟨⟨?_, ?_⟩⟩
     · intro x
@@ -688,9 +748,8 @@ noncomputable def toComplex [CharZero K] (hK : Cardinal.mk K ≤ Cardinal.contin
       simp
   f4.toRingHom.comp <| f3.comp <| f2.comp <| f1
 
-lemma exists_mvPolynomial_inverse [Finite ι] [CharZero K] [Algebra K L] [IsAlgClosed L]
-    (p : ι → MvPolynomial ι K)
-    (hInj : Function.Injective (fun x i => (aeval x (p i) : L))) :
+lemma exists_mvPolynomial_inverse {K L ι : Type*} [Field K] [Field L] [Finite ι] [CharZero K] [Algebra K L] [IsAlgClosed L]
+    (p : ι → MvPolynomial ι K) (hInj : Function.Injective (fun x i => (aeval x (p i) : L))) :
     ∃ q : ι → MvPolynomial ι K, (∀ i, (p i).bind₁ q = .X i) ∧ (∀ i, (q i).bind₁ p = .X i) := by
   let := Classical.decEq K
   let := Fintype.ofFinite ι
@@ -806,3 +865,5 @@ lemma exists_mvPolynomial_inverse [Finite ι] [CharZero K] [Algebra K L] [IsAlgC
     rw [eval, eval₂Hom_bind₁]
     simp
     exact this
+
+#print axioms exists_mvPolynomial_inverse
